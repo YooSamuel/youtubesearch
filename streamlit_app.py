@@ -321,7 +321,7 @@ def main():
                except Exception as e:
                    st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
 
-   elif nav == "📊 분석":
+    elif nav == "📊 분석":
        st.title("YouTube 영상 분석")
        
        # URL 입력
@@ -372,52 +372,52 @@ def main():
                                else:
                                    st.error("저장에 실패했습니다.")
 
-   elif nav == "📚 내 지식":
-       st.title("저장된 노트")
+    elif nav == "📚 내 지식":
+        st.title("저장된 노트")
        
-       if 'knowledge_base' not in st.session_state:
-           st.session_state.knowledge_base = []
+        if 'knowledge_base' not in st.session_state:
+            st.session_state.knowledge_base = []
        
-       if not st.session_state.knowledge_base:
-           st.write("저장된 노트가 없습니다.")
-       else:
-           st.write(f"총 {len(st.session_state.knowledge_base)}개의 노트가 저장되어 있습니다.")
-           st.markdown("---")
+        if not st.session_state.knowledge_base:
+            st.write("저장된 노트가 없습니다.")
+        else:
+            st.write(f"총 {len(st.session_state.knowledge_base)}개의 노트가 저장되어 있습니다.")
+            st.markdown("---")
 
-           for idx, video in enumerate(st.session_state.knowledge_base):
-               with st.container():
-                   col1, col2, col3 = st.columns([1, 3, 1])
+            for idx, video in enumerate(st.session_state.knowledge_base):
+                with st.container():
+                    col1, col2, col3 = st.columns([1, 3, 1])
                    
-                   with col1:
-                       st.image(video.get('thumbnail', ''), use_container_width=True)
+                    with col1:
+                        st.image(video.get('thumbnail', ''), use_container_width=True)
                    
-                   with col2:
-                       st.subheader(video.get('title', '제목 없음'))
-                       st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
-                       st.write(f"저장 시간: {video.get('saved_at', '알 수 없음')}")
+                    with col2:
+                        st.subheader(video.get('title', '제목 없음'))
+                        st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                        st.write(f"저장 시간: {video.get('saved_at', '알 수 없음')}")
                    
-                   with col3:
-                       st.write("")
-                       st.write("")
-                       if st.button("🗑️ 삭제", key=f"delete_{idx}"):
-                           st.session_state.knowledge_base.pop(idx)
-                           st.success("노트가 삭제되었습니다.")
-                           time.sleep(0.5)
-                           st.rerun()
+                    with col3:
+                        st.write("")
+                        st.write("")
+                        if st.button("🗑️ 삭제", key=f"delete_{idx}"):
+                            st.session_state.knowledge_base.pop(idx)
+                            st.success("노트가 삭제되었습니다.")
+                            time.sleep(0.5)
+                            st.rerun()
                    
-                   with st.expander("자세히 보기"):
-                       tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
+                    with st.expander("자세히 보기"):
+                        tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
                        
-                       with tabs[0]:
-                           st.markdown(video.get('summary', '요약이 없습니다.'))
+                        with tabs[0]:
+                            st.markdown(video.get('summary', '요약이 없습니다.'))
                        
-                       with tabs[1]:
-                           st.markdown(video.get('transcript', '스크립트가 없습니다.'))
+                        with tabs[1]:
+                            st.markdown(video.get('transcript', '스크립트가 없습니다.'))
                        
-                       with tabs[2]:
-                           st.markdown(video.get('blog_post', '블로그 포스트가 없습니다.'))
+                        with tabs[2]:
+                            st.markdown(video.get('blog_post', '블로그 포스트가 없습니다.'))
                    
-                   st.markdown("---")
+                    st.markdown("---")
 
 if __name__ == "__main__":
    main()
