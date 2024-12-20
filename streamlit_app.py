@@ -264,7 +264,7 @@ def main():
                     except Exception as e:
                         st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
 
-    if 'videos' in st.session_state and st.session_state.videos:
+     if 'videos' in st.session_state and st.session_state.videos:
         videos = st.session_state.videos
         keyword = st.session_state.keyword
 
@@ -278,15 +278,15 @@ def main():
                 col1, col2 = st.columns([1, 2])
                 
                 with col1:
-                    st.image(video['thumbnail'], use_container_width=True)
+                    st.image(video.get('thumbnail', ''), use_container_width=True)
                 
                 with col2:
-                    st.subheader(video['title'])
-                    st.markdown(f"**채널명:** {video['channel_name']}")
-                    st.markdown(f"**구독자 수:** {int(video['channel_subscribers']):,}명")
-                    st.markdown(f"**조회수:** {int(video['view_count']):,}회")
-                    st.markdown(f"**업로드 날짜:** {video['upload_date'][:10]}")
-                    st.markdown(f"**영상 링크:** [YouTube에서 보기](https://www.youtube.com/watch?v={video['video_id']})")
+                    st.subheader(video.get('title', '제목 없음'))
+                    st.markdown(f"**채널명:** {video.get('channel_name', '채널명 없음')}")
+                    st.markdown(f"**구독자 수:** {int(video.get('channel_subscribers', 0)):,}명")
+                    st.markdown(f"**조회수:** {int(video.get('view_count', 0)):,}회")
+                    st.markdown(f"**업로드 날짜:** {video.get('upload_date', '')[:10]}")
+                    st.markdown(f"**영상 링크:** [YouTube에서 보기](https://www.youtube.com/watch?v={video.get('video_id', '')})")
                 
                 tab1, tab2, tab3 = st.tabs(["영상 요약", "전체 스크립트", "블로그 포스트"])
                 
@@ -294,17 +294,17 @@ def main():
                     col3, col4 = st.columns(2)
                     with col3:
                         st.markdown("### 일반 요약")
-                        st.markdown(video['summary'])
+                        st.markdown(video.get('summary', '요약을 생성할 수 없습니다.'))
                     with col4:
                         st.markdown("### 구조적 요약")
-                        st.markdown(video['structured_summary'])
+                        st.markdown(video.get('structured_summary', '구조적 요약을 생성할 수 없습니다.'))
                 
                 with tab2:
                     st.markdown("### 전체 스크립트")
-                    st.markdown(video['transcript'])
+                    st.markdown(video.get('transcript', '스크립트를 불러올 수 없습니다.'))
                 
                 with tab3:
-                    st.markdown(video['blog_post'])
+                    st.markdown(video.get('blog_post', '블로그 포스트를 생성할 수 없습니다.'))
                 
                 st.markdown("---")
 
