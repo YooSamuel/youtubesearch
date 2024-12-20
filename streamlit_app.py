@@ -189,8 +189,8 @@ def main():
         st.title("🎥 YouTube 분석기")
         nav = st.radio(
             "메뉴",
-            ["🏠 홈", "🔍 발견", "📚 내 지식"],
-            captions=["시작 페이지", "YouTube 영상 검색/분석", "저장된 노트 보기"]
+            ["🏠 홈", "🔍 발견", "📊 분석", "📚 내 지식"],
+            captions=["시작 페이지", "YouTube 영상 검색", "영상 상세 분석", "저장된 노트 보기"]
         )
 
     # API 키 설정
@@ -216,7 +216,7 @@ def main():
                 st.success("API 키가 저장되었습니다!")
 
     elif nav == "🔍 발견":
-        st.title("YouTube 영상 검색 및 분석")
+        st.title("YouTube 영상 검색")
         
         # 검색 필터
         with st.expander("검색 필터"):
@@ -232,60 +232,21 @@ def main():
                 )
 
         # 검색창
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            keyword = st.text_input("검색어를 입력하세요")
-        with col2:
-            search_button = st.button("검색", use_container_width=True)
+    elif nav == "🔍 발견":
+        st.title("YouTube 영상 검색")
         
-        if keyword and search_button:
-            search_filters = {
-                "type": search_type if search_type != "전체" else None,
-                "time_range": time_range if time_range != "전체 날짜" else None
-            }
-            
-            with st.spinner("검색 중..."):
-                try:
-                    analyzer = YouTubeAnalyzer(youtube_key, gemini_key)
-                    videos, error = analyzer.search_videos(keyword, search_filters)
-                    
-                    if error:
-                        st.error(f"오류가 발생했습니다: {error}")
-                    else:
-                        st.success(f"{len(videos)}개의 영상을 찾았습니다!")
-                        
-                        for video in videos:
-                            with st.container():
-                                col1, col2, col3 = st.columns([1, 2, 1])
-                                
-                                with col1:
-                                    st.image(video.get('thumbnail', ''), use_container_width=True)
-                                
-                                with col2:
-                                    st.subheader(video.get('title', '제목 없음'))
-                                    st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
-                                    st.write(f"조회수: {int(video.get('view_count', 0)):,}회")
-                                    st.write(f"업로드: {video.get('upload_date', '')[:10]}")
-                                
-                                with col3:
-                                    if st.button("분석하기", key=f"analyze_{video['video_id']}"):
-                                        with st.spinner("영상 분석 중..."):
-                                            analysis_result, error = analyzer.analyze_video(video['video_id'])
-                                            if error:
-                                                st.error(error)
-                                            else:
-                                                # 분석 결과 표시
-                                                tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
-                                                with tabs[0]:
-                                                    st.markdown(analysis_result['summary'])
-                                                with tabs[1]:
-                                                    st.markdown(analysis_result['transcript'])
-                                                with tabs[2]:
-                                                    st.markdown(analysis_result['blog_post'])
-                                
-                                st.markdown("---")
-                except Exception as e:
-                    st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
+        # 검색 필터
+        with st.expander("검색 필터"):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("구분")
+                search_type = st.selectbox("영상 종류", ["전체", "뉴스", "웹사이트"])
+            with col2:
+                st.subheader("업로드 날짜")
+                time_range = st.selectbox(
+                    "기간 선택",
+                    ["전체 날짜", "지난 1시간", "오늘", "이번주", "이번달", "올해"]
+                )
 
     elif nav == "📚 내 지식":
         st.title("저장된 노트")
