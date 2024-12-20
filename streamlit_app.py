@@ -184,14 +184,23 @@ def generate_markdown(videos, keyword):
         content += f"- 구독자 수: {int(video['channel_subscribers']):,}명\n"
         content += f"- 조회수: {int(video['view_count']):,}회\n"
         content += f"- 업로드 날짜: {video['upload_date'][:10]}\n\n"
+        
+        # 영상 요약 부분
         content += "### 영상 요약\n\n"
-        content += f"{video['summary']}\n\n"
+        content += f"{video.get('summary', '요약을 생성할 수 없습니다.')}\n\n"
+        
+        # 구조적 요약 부분
         content += "### 구조적 요약\n\n"
-        content += f"{video['structured_summary']}\n\n"
+        content += f"{video.get('structured_summary', '구조적 요약을 생성할 수 없습니다.')}\n\n"
+        
+        # 블로그 포스트 부분
         content += "### 블로그 포스트\n\n"
-        content += f"{video['blog_post']}\n\n"
+        content += f"{video.get('blog_post', '블로그 포스트를 생성할 수 없습니다.')}\n\n"
+        
+        # 전체 스크립트 부분
         content += "### 전체 스크립트\n\n"
-        content += f"{video['transcript']}\n\n"
+        content += f"{video.get('transcript', '스크립트를 불러올 수 없습니다.')}\n\n"
+        
         content += "---\n\n"
     
     return content
