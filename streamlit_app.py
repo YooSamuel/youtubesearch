@@ -84,7 +84,77 @@ class YouTubeAnalyzer:
 
         except Exception as e:
             return None, str(e)
+    def search_videos(self, keyword, max_results=5):
+        """키워드로 영상 검색"""
+        try:
+            search_response = self.youtube.search().list(
+                q=keyword,
+                part="id,snippet",
+                maxResults=max_results,
+                type="video",
+                order="viewCount"
+            ).execute()
 
+            videos = []
+            total_videos = len(search_response["items"])
+            
+            for i, item in enumerate(search_response["items"]):
+                video_id = item["id"]["videoId"]
+                
+                video_response = self.youtube.videos().list(
+                    part="statistics,snippet",
+                    id=video_id
+                ).execute()
+                
+                channel_id = item["snippet"]["channelId"]
+                channel_response = self.youtube.channels().list(
+                    part="statistics",
+                    id=channel_id
+                ).execute()
+
+                try:
+                    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
+                    transcript_text = ' '.join([entry['text'] for entry in transcript])
+                except:
+                    try:
+                        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko-KR'])
+                        transcript_text = ' '.join([entry['text'] for entry in transcript])
+                    except:
+                        try:
+                            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
+                            try:
+                                translated = transcript_list.find_transcript(['en']).translate('ko')
+                                transcript_text = ' '.join([entry['text'] for entry in translated.fetch()])
+                            except:
+                                first_transcript = next(iter(transcript_list))
+                                translated = first_transcript.translate('ko')
+                                transcript_text = ' '.join([entry['text'] for entry in translated.fetch()])
+                        except:
+                            transcript_text = "자막을 불러올 수 없습니다."
+
+                title = item["snippet"]["title"]
+                summary = self.generate_summary(transcript_text, title)
+                structured_note = self.generate_structured_note(transcript_text, title)
+                blog_post = self.generate_blog_post(title, transcript_text, summary)
+
+                video_data = {
+                    "title": title,
+                    "video_id": video_id,
+                    "thumbnail": item["snippet"]["thumbnails"]["high"]["url"],
+                    "channel_name": item["snippet"]["channelTitle"],
+                    "channel_subscribers": channel_response["items"][0]["statistics"].get("subscriberCount", "0"),
+                    "view_count": video_response["items"][0]["statistics"]["viewCount"],
+                    "upload_date": item["snippet"]["publishedAt"],
+                    "transcript": transcript_text,
+                    "summary": summary,
+                    "structured_note": structured_note,
+                    "blog_post": blog_post
+                }
+                videos.append(video_data)
+            
+            return videos, None
+        except Exception as e:
+            return None, str(e)
     def generate_summary(self, text, title):
         """텍스트 요약 생성"""
         prompt = f"""
@@ -359,77 +429,6 @@ def main():
                     
                     st.markdown("---")
 
-def search_videos(self, keyword, max_results=5):
-    """키워드로 영상 검색"""
-    try:
-        search_response = self.youtube.search().list(
-            q=keyword,
-            part="id,snippet",
-            maxResults=max_results,
-            type="video",
-            order="viewCount"
-        ).execute()
-
-        videos = []
-        total_videos = len(search_response["items"])
-        
-        for i, item in enumerate(search_response["items"]):
-            video_id = item["id"]["videoId"]
-            
-            video_response = self.youtube.videos().list(
-                part="statistics,snippet",
-                id=video_id
-            ).execute()
-            
-            channel_id = item["snippet"]["channelId"]
-            channel_response = self.youtube.channels().list(
-                part="statistics",
-                id=channel_id
-            ).execute()
-
-            try:
-                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
-                transcript_text = ' '.join([entry['text'] for entry in transcript])
-            except:
-                try:
-                    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko-KR'])
-                    transcript_text = ' '.join([entry['text'] for entry in transcript])
-                except:
-                    try:
-                        transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-                        try:
-                            translated = transcript_list.find_transcript(['en']).translate('ko')
-                            transcript_text = ' '.join([entry['text'] for entry in translated.fetch()])
-                        except:
-                            first_transcript = next(iter(transcript_list))
-                            translated = first_transcript.translate('ko')
-                            transcript_text = ' '.join([entry['text'] for entry in translated.fetch()])
-                    except:
-                        transcript_text = "자막을 불러올 수 없습니다."
-
-            title = item["snippet"]["title"]
-            summary = self.generate_summary(transcript_text, title)
-            structured_note = self.generate_structured_note(transcript_text, title)
-            blog_post = self.generate_blog_post(title, transcript_text, summary)
-
-            video_data = {
-                "title": title,
-                "video_id": video_id,
-                "thumbnail": item["snippet"]["thumbnails"]["high"]["url"],
-                "channel_name": item["snippet"]["channelTitle"],
-                "channel_subscribers": channel_response["items"][0]["statistics"]["subscriberCount"],
-                "view_count": video_response["items"][0]["statistics"]["viewCount"],
-                "upload_date": item["snippet"]["publishedAt"],
-                "transcript": transcript_text,
-                "summary": summary,
-                "structured_note": structured_note,
-                "blog_post": blog_post
-            }
-            videos.append(video_data)
-            
-        return videos, None
-    except Exception as e:
-        return None, str(e)
 
 if __name__ == "__main__":
     main()
