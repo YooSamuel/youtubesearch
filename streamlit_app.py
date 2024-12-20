@@ -5,7 +5,6 @@ import googleapiclient.errors
 from youtube_transcript_api import YouTubeTranscriptApi
 from datetime import datetime
 import pandas as pd
-import json
 import base64
 
 class YouTubeScraper:
@@ -26,43 +25,44 @@ class YouTubeScraper:
             ).execute()
 
             videos = []
-            with st.progress(0) as progress_bar:
-                total_videos = len(search_response["items"])
+            total_videos = len(search_response["items"])
+            
+            for i, item in enumerate(search_response["items"]):
+                # 진행률 표시
+                progress_text = f'동영상 정보 수집 중... ({i+1}/{total_videos})'
+                progress_value = (i + 1) / total_videos
+                st.progress(progress_value, text=progress_text)
                 
-                for i, item in enumerate(search_response["items"]):
-                    video_id = item["id"]["videoId"]
-                    
-                    video_response = self.youtube.videos().list(
-                        part="statistics,snippet",
-                        id=video_id
-                    ).execute()
-                    
-                    channel_id = item["snippet"]["channelId"]
-                    channel_response = self.youtube.channels().list(
-                        part="statistics",
-                        id=channel_id
-                    ).execute()
+                video_id = item["id"]["videoId"]
+                
+                video_response = self.youtube.videos().list(
+                    part="statistics,snippet",
+                    id=video_id
+                ).execute()
+                
+                channel_id = item["snippet"]["channelId"]
+                channel_response = self.youtube.channels().list(
+                    part="statistics",
+                    id=channel_id
+                ).execute()
 
-                    try:
-                        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
-                        transcript_text = ' '.join([entry['text'] for entry in transcript])
-                    except:
-                        transcript_text = "자막을 불러올 수 없습니다."
+                try:
+                    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
+                    transcript_text = ' '.join([entry['text'] for entry in transcript])
+                except:
+                    transcript_text = "자막을 불러올 수 없습니다."
 
-                    video_data = {
-                        "title": item["snippet"]["title"],
-                        "video_id": video_id,
-                        "thumbnail": item["snippet"]["thumbnails"]["high"]["url"],
-                        "channel_name": item["snippet"]["channelTitle"],
-                        "channel_subscribers": channel_response["items"][0]["statistics"]["subscriberCount"],
-                        "view_count": video_response["items"][0]["statistics"]["viewCount"],
-                        "upload_date": item["snippet"]["publishedAt"],
-                        "transcript": transcript_text
-                    }
-                    videos.append(video_data)
-                    
-                    # 진행률 업데이트
-                    progress_bar.progress((i + 1) / total_videos)
+                video_data = {
+                    "title": item["snippet"]["title"],
+                    "video_id": video_id,
+                    "thumbnail": item["snippet"]["thumbnails"]["high"]["url"],
+                    "channel_name": item["snippet"]["channelTitle"],
+                    "channel_subscribers": channel_response["items"][0]["statistics"]["subscriberCount"],
+                    "view_count": video_response["items"][0]["statistics"]["viewCount"],
+                    "upload_date": item["snippet"]["publishedAt"],
+                    "transcript": transcript_text
+                }
+                videos.append(video_data)
 
             return videos, None
         except Exception as e:
@@ -114,9 +114,11 @@ def main():
             help="YouTube Data API v3 키를 입력하세요"
         )
         keyword = st.text_input("검색 키워드", help="검색하고 싶은 키워드를 입력하세요")
-        max_results = st.slider("검색 결과 수", 1, 50, 5, help="가져올 영상의 수를 선택하세요")
+        max_results = st.slider("검색 결과 수", 1, 50, 15, help="가져올 영상의 수를 선택하세요")
         
-        if st.button("검색", use_container_width=True):
+        search_button = st.button("검색", use_container_width=True)
+        
+        if search_button:
             if not api_key:
                 st.error("API 키를 입력해주세요.")
             elif not keyword:
