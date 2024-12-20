@@ -238,19 +238,47 @@ class YouTubeAnalyzer:
                 
                 st.markdown("---")
     def save_to_knowledge_base(video_data):
-        """지식 베이스에 저장"""
+    """지식 베이스에 저장"""
+    try:
         # 세션 스테이트 초기화
         if 'knowledge_base' not in st.session_state:
             st.session_state['knowledge_base'] = []
+        
+        # 디버깅을 위한 현재 상태 출력
+        st.write(f"현재 저장된 노트 수: {len(st.session_state['knowledge_base'])}")
         
         # 영상 ID로 중복 체크
         video_ids = [v.get('video_id') for v in st.session_state['knowledge_base']]
         
         if video_data.get('video_id') not in video_ids:
+            # 진행 상태 표시
+            progress_text = st.empty()
+            progress_bar = st.progress(0)
+            
             # 저장 시간 추가
             video_data['saved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            # 단계별 진행 상태 표시
+            for i, step in enumerate(['데이터 확인 중...', '중복 검사 중...', '저장 준비 중...', '저장 완료!']):
+                progress_text.text(step)
+                progress_bar.progress((i + 1) * 25)
+                time.sleep(0.5)
+            
+            # 데이터 저장
             st.session_state['knowledge_base'].append(video_data)
+            
+            # 저장 후 상태 확인
+            st.write(f"저장 후 노트 수: {len(st.session_state['knowledge_base'])}")
+            st.write("방금 저장된 노트 제목:", video_data.get('title'))
+            
+            progress_text.empty()
+            progress_bar.empty()
             return True
+        else:
+            st.warning("이미 저장된 영상입니다.")
+            return False
+    except Exception as e:
+        st.error(f"저장 중 오류가 발생했습니다: {str(e)}")
         return False
 def main():
     st.set_page_config(layout="wide", page_title="YouTube 분석기")
@@ -390,9 +418,15 @@ def main():
                        
                        # 저장 버튼
                        if st.button("내 지식에 저장", key="save_analysis"):
-                           with st.spinner("저장 중..."):
-                               save_to_knowledge_base(analysis_result)
-                               st.success("내 지식에 저장되었습니다!")
+                       with st.spinner("저장 중..."):
+                           if save_to_knowledge_base(analysis_result):
+                               st.success("성공적으로 저장되었습니다!")
+                               # 저장된 데이터 확인
+                               st.write("현재 저장된 모든 노트:")
+                               for idx, note in enumerate(st.session_state['knowledge_base']):
+                                   st.write(f"{idx + 1}. {note.get('title')} (저장시간: {note.get('saved_at')})")
+                       else:
+                           st.error("저장에 실패했습니다.")
 
     elif nav == "📚 내 지식":
         st.title("저장된 노트")
