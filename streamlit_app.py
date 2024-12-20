@@ -288,10 +288,34 @@ def main():
                 with col1:
                     st.image(video['thumbnail'], use_container_width=True)
                 
-                with col2:
+                                with col2:
                     st.subheader(video['title'])
                     st.markdown(f"**채널명:** {video['channel_name']}")
                     st.markdown(f"**구독자 수:** {int(video['channel_subscribers']):,}명")
                     st.markdown(f"**조회수:** {int(video['view_count']):,}회")
                     st.markdown(f"**업로드 날짜:** {video['upload_date'][:10]}")
-                    st.markdown(f"**영상 링크:** [
+                    st.markdown(f"**영상 링크:** [YouTube에서 보기](https://www.youtube.com/watch?v={video['video_id']})")
+            
+            # 탭 생성
+            tab1, tab2, tab3 = st.tabs(["영상 요약", "전체 스크립트", "블로그 포스트"])
+            
+            with tab1:
+                col3, col4 = st.columns(2)
+                with col3:
+                    st.markdown("### 일반 요약")
+                    st.markdown(video['summary'])
+                with col4:
+                    st.markdown("### 구조적 요약")
+                    st.markdown(video['structured_summary'])
+            
+            with tab2:
+                st.markdown("### 전체 스크립트")
+                st.markdown(video['transcript'])
+            
+            with tab3:
+                st.markdown(video['blog_post'])
+            
+            st.markdown("---")
+
+if __name__ == "__main__":
+    main()
