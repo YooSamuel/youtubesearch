@@ -180,8 +180,44 @@ def main():
         tab1, tab2 = st.tabs(["🔍 영상 검색", "🎯 단일 영상 분석"])
         
         with tab1:
-            # 여기에 기존의 검색 기능 구현
-            st.write("키워드로 영상 검색 기능")
+            st.subheader("키워드로 영상 검색")
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                keyword = st.text_input("검색어를 입력하세요")
+            with col2:
+                search_button = st.button("검색", use_container_width=True)
+            
+            if keyword and search_button:
+                with st.spinner("검색 중..."):
+                    try:
+                        scraper = YouTubeScraper(youtube_key, gemini_key)
+                        videos, error = scraper.search_videos(keyword, max_results=10)
+                        
+                        if error:
+                            st.error(f"오류가 발생했습니다: {error}")
+                        else:
+                            st.success(f"{len(videos)}개의 영상을 찾았습니다!")
+                            
+                            for video in videos:
+                                with st.container():
+                                    col1, col2, col3 = st.columns([1, 2, 1])
+                                    
+                                    with col1:
+                                        st.image(video.get('thumbnail', ''), use_container_width=True)
+                                    
+                                    with col2:
+                                        st.subheader(video.get('title', '제목 없음'))
+                                        st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                                        st.write(f"조회수: {int(video.get('view_count', 0)):,}회")
+                                    
+                                    with col3:
+                                        if st.button("저장", key=f"save_{video['video_id']}"):
+                                            save_to_knowledge_base(video)
+                                            st.success("내 지식에 저장되었습니다!")
+                                    
+                                    st.markdown("---")
+                    except Exception as e:
+                        st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
             
         with tab2:
             st.subheader("YouTube 영상 분석")
@@ -195,13 +231,17 @@ def main():
                     st.error(error)
                 else:
                     # 영상 정보 표시
-                    col1, col2 = st.columns([1, 2])
+                    col1, col2, col3 = st.columns([1, 2, 1])
                     with col1:
                         st.image(video_data['thumbnail'], use_container_width=True)
                     with col2:
                         st.subheader(video_data['title'])
                         st.write(f"채널: {video_data['channel_name']}")
                         st.write(f"조회수: {int(video_data['view_count']):,}회")
+                    with col3:
+                        if st.button("저장", key=f"save_single_{video_data['video_id']}"):
+                            save_to_knowledge_base(video_data)
+                            st.success("내 지식에 저장되었습니다!")
                     
                     # 탭으로 다양한 분석 결과 표시
                     tabs = st.tabs(["📝 요약 노트", "📜 스크립트", "⏱ 타임스탬프", "📚 블로그"])
@@ -225,7 +265,48 @@ def main():
 
     elif nav == "📚 내 지식":
         st.title("저장된 노트")
-        st.write("아직 구현되지 않았습니다.")
+        
+        # 저장된 데이터 불러오기
+        if 'knowledge_base' not in st.session_state:
+            st.session_state.knowledge_base = []
+        
+        if not st.session_state.knowledge_base:
+            st.write("저장된 노트가 없습니다.")
+        else:
+            for idx, video in enumerate(st.session_state.knowledge_base):
+                with st.container():
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                    
+                    with col1:
+                        st.image(video.get('thumbnail', ''), use_container_width=True)
+                    
+                    with col2:
+                        st.subheader(video.get('title', '제목 없음'))
+                        st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                        st.write(f"조회수: {int(video.get('view_count', 0)):,}회")
+                    
+                    with col3:
+                        if st.button("삭제", key=f"delete_{idx}"):
+                            st.session_state.knowledge_base.pop(idx)
+                            st.rerun()
+                    
+                    # 저장된 노트 내용 표시
+                    with st.expander("노트 보기"):
+                        st.markdown("### 요약")
+                        st.markdown(video.get('summary', '요약 없음'))
+                        st.markdown("### 구조적 노트")
+                        st.markdown(video.get('structured_note', '노트 없음'))
+                        st.markdown("### 블로그")
+                        st.markdown(video.get('blog_post', '블로그 포스트 없음'))
+                    
+                    st.markdown("---")
+def save_to_knowledge_base(video_data):
+    if 'knowledge_base' not in st.session_state:
+        st.session_state.knowledge_base = []
+    
+    # 중복 체크
+    if not any(v.get('video_id') == video_data.get('video_id') for v in st.session_state.knowledge_base):
+        st.session_state.knowledge_base.append(video_data)
 
 if __name__ == "__main__":
     main()
