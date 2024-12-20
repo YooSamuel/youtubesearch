@@ -143,48 +143,115 @@ class YouTubeAnalyzer:
         except Exception as e:
             return f"요약 생성 중 오류가 발생했습니다: {str(e)}"
 
-    def generate_blog_post(self, title, text):
-        """블로그 포스트 생성"""
-        try:
-            # 메인 키워드 추출 (제목에서 주요 키워드 추출)
-            keywords = title.split()
-            main_keyword = max(keywords, key=len) if keywords else "주제"
-
-            prompt = f"""
-            당신은 네이버 블로그 상위 노출 전문가입니다. 아래 영상의 내용을 기반으로
-            네이버 검색 시 최상단에 노출될 수 있는 블로그 글을 작성해주세요.
-
-            제목: {title}
-            메인 키워드: {main_keyword}
-            내용: {text}
-
-            작성 조건:
-            1. 길이: 한글 기준 2000자 이상
-            2. '{main_keyword}' 키워드를 자연스럽게 7회 이상 사용
-            3. 단락은 200-300자 내외로 구분
-            4. 명확한 소제목 사용 (단, '도입부', '본론', '결론' 등의 형식적 단어 사용 금지)
-            5. 구어체 사용 (예: ~해요, ~네요, ~거든요)
-            6. SEO 최적화를 위한 자연스러운 키워드 배치
-
-            글의 구조:
-            1. 시작: 주제 소개 및 독자의 흥미 유발
-            2. 전개: 3-4개의 소주제로 구분하여 상세 내용 설명
-            3. 마무리: 핵심 내용 요약 및 독자와의 공감대 형성
-            """
-            response = self.model.generate_content(prompt)
-            return response.text
-        except Exception as e:
-            return f"블로그 포스트 생성 중 오류가 발생했습니다: {str(e)}"
-
-def save_to_knowledge_base(video_data):
-    """지식 베이스에 저장"""
-    if 'knowledge_base' not in st.session_state:
-        st.session_state.knowledge_base = []
+        def generate_blog_post(self, title, text):
+            """블로그 포스트 생성"""
+            try:
+                # 메인 키워드 추출 (제목에서 주요 키워드 추출)
+                keywords = title.split()
+                main_keyword = max(keywords, key=len) if keywords else "주제"
     
-    # 중복 체크
-    if not any(v.get('video_id') == video_data.get('video_id') for v in st.session_state.knowledge_base):
-        st.session_state.knowledge_base.append(video_data)
-
+                prompt = f"""
+                당신은 네이버 블로그 상위 노출 전문가입니다. 아래 영상의 내용을 기반으로
+                네이버 검색 시 최상단에 노출될 수 있는 블로그 글을 작성해주세요.
+    
+                제목: {title}
+                메인 키워드: {main_keyword}
+                내용: {text}
+    
+                작성 조건:
+                1. 길이: 한글 기준 2000자 이상
+                2. '{main_keyword}' 키워드를 자연스럽게 7회 이상 사용
+                3. 단락은 200-300자 내외로 구분
+                4. 명확한 소제목 사용 (단, '도입부', '본론', '결론' 등의 형식적 단어 사용 금지)
+                5. 구어체 사용 (예: ~해요, ~네요, ~거든요)
+                6. SEO 최적화를 위한 자연스러운 키워드 배치
+    
+                글의 구조:
+                1. 시작: 주제 소개 및 독자의 흥미 유발
+                2. 전개: 3-4개의 소주제로 구분하여 상세 내용 설명
+                3. 마무리: 핵심 내용 요약 및 독자와의 공감대 형성
+                """
+                response = self.model.generate_content(prompt)
+                return response.text
+            except Exception as e:
+                return f"블로그 포스트 생성 중 오류가 발생했습니다: {str(e)}"
+        def display_knowledge_base():
+            """저장된 지식 베이스 표시"""
+            st.title("📚 저장된 노트")
+            
+            if 'knowledge_base' not in st.session_state:
+                st.session_state['knowledge_base'] = []
+            
+            if not st.session_state['knowledge_base']:
+                st.info("저장된 노트가 없습니다. 영상을 분석하고 저장해보세요!")
+                return
+        
+            # 저장된 노트 개수 표시
+            st.write(f"총 {len(st.session_state['knowledge_base'])}개의 노트가 저장되어 있습니다.")
+            st.markdown("---")
+        
+            # 저장된 노트 표시
+            for idx, video in enumerate(st.session_state['knowledge_base']):
+                with st.container():
+                    # 헤더 영역
+                    col1, col2, col3 = st.columns([1, 3, 1])
+                    
+                    with col1:
+                        st.image(video.get('thumbnail', ''), use_container_width=True)
+                    
+                    with col2:
+                        st.subheader(video.get('title', '제목 없음'))
+                        st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                        st.write(f"저장 시간: {video.get('saved_at', '알 수 없음')}")
+                    
+                    with col3:
+                        st.write("")  # 간격 조정
+                        st.write("")  # 간격 조정
+                        if st.button("🗑️ 삭제", key=f"delete_{idx}"):
+                            with st.spinner("삭제 중..."):
+                                st.session_state['knowledge_base'].pop(idx)
+                                st.success("노트가 삭제되었습니다.")
+                                time.sleep(0.5)
+                                st.rerun()
+                    
+                    # 콘텐츠 영역
+                    with st.expander("자세히 보기"):
+                        tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
+                        
+                        with tabs[0]:
+                            if video.get('summary'):
+                                st.markdown(video['summary'])
+                            else:
+                                st.info("요약이 없습니다.")
+                        
+                        with tabs[1]:
+                            if video.get('transcript'):
+                                st.markdown(video['transcript'])
+                            else:
+                                st.info("스크립트가 없습니다.")
+                        
+                        with tabs[2]:
+                            if video.get('blog_post'):
+                                st.markdown(video['blog_post'])
+                            else:
+                                st.info("블로그 포스트가 없습니다.")
+                    
+                    st.markdown("---")
+        def save_to_knowledge_base(video_data):
+            """지식 베이스에 저장"""
+            # 세션 스테이트 초기화
+            if 'knowledge_base' not in st.session_state:
+                st.session_state['knowledge_base'] = []
+            
+            # 영상 ID로 중복 체크
+            video_ids = [v.get('video_id') for v in st.session_state['knowledge_base']]
+            
+            if video_data.get('video_id') not in video_ids:
+                # 저장 시간 추가
+                video_data['saved_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                st.session_state['knowledge_base'].append(video_data)
+                return True
+            return False
 def main():
     st.set_page_config(layout="wide", page_title="YouTube 분석기")
 
@@ -328,40 +395,8 @@ def main():
                                st.success("내 지식에 저장되었습니다!")
 
     elif nav == "📚 내 지식":
-        st.title("저장된 노트")
-       
-        if 'knowledge_base' not in st.session_state:
-            st.session_state.knowledge_base = []
-       
-        if not st.session_state.knowledge_base:
-            st.write("저장된 노트가 없습니다.")
-        else:
-            for idx, video in enumerate(st.session_state.knowledge_base):
-                with st.container():
-                    col1, col2, col3 = st.columns([1, 2, 1])
-                with col1:
-                    st.image(video.get('thumbnail', ''), use_container_width=True)
-                with col2:
-                    st.subheader(video.get('title', '제목 없음'))
-                    st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
-                with col3:
-                    if st.button("삭제", key=f"delete_{idx}"):
-                        with st.spinner("삭제 중..."):
-                            st.session_state.knowledge_base.pop(idx)
-                            time.sleep(0.5)
-                            st.rerun()
-                   
-                   # 자세히 보기 확장 패널
-                with st.expander("자세히 보기"):
-                    detail_tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
-                    with detail_tabs[0]:
-                        st.markdown(video.get('summary', '요약을 생성할 수 없습니다.'))
-                    with detail_tabs[1]:
-                        st.markdown(video.get('transcript', '스크립트를 불러올 수 없습니다.'))
-                    with detail_tabs[2]:
-                        st.markdown(video.get('blog_post', '블로그 글을 생성할 수 없습니다.'))
-                   
-            st.markdown("---")
+        display_knowledge_base()
+
 
 if __name__ == "__main__":
    main()
