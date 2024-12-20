@@ -84,21 +84,40 @@ class YouTubeAnalyzer:
 
         except Exception as e:
             return None, str(e)
-    def search_videos(self, keyword, max_results=5):
-        """키워드로 영상 검색"""
+    def search_videos(self, keyword, search_filters=None, max_results=10):
+        """키워드로 영상 검색 (기본 정보만)"""
         try:
-            search_response = self.youtube.search().list(
-                q=keyword,
-                part="id,snippet",
-                maxResults=max_results,
-                type="video",
-                order="viewCount"
-            ).execute()
+            # 검색 필터 적용
+            published_after = None
+            if search_filters and 'time_range' in search_filters:
+                if search_filters['time_range'] == '지난 1시간':
+                    published_after = (datetime.utcnow() - timedelta(hours=1)).isoformat('T') + 'Z'
+                elif search_filters['time_range'] == '오늘':
+                    published_after = (datetime.utcnow() - timedelta(days=1)).isoformat('T') + 'Z'
+                elif search_filters['time_range'] == '이번주':
+                    published_after = (datetime.utcnow() - timedelta(weeks=1)).isoformat('T') + 'Z'
+                elif search_filters['time_range'] == '이번달':
+                    published_after = (datetime.utcnow() - timedelta(days=30)).isoformat('T') + 'Z'
+                elif search_filters['time_range'] == '올해':
+                    published_after = (datetime.utcnow() - timedelta(days=365)).isoformat('T') + 'Z'
+
+            search_params = {
+                'q': keyword,
+                'part': 'id,snippet',
+                'maxResults': max_results,
+                'type': 'video',
+                'order': 'relevance'
+            }
+
+            if published_after:
+                search_params['publishedAfter'] = published_after
+
+            search_response = self.youtube.search().list(**search_params).execute()
 
             videos = []
             total_videos = len(search_response["items"])
             
-            for i, item in enumerate(search_response["items"]):
+            for item in search_response["items"]:
                 video_id = item["id"]["videoId"]
                 
                 video_response = self.youtube.videos().list(
@@ -106,53 +125,55 @@ class YouTubeAnalyzer:
                     id=video_id
                 ).execute()
                 
-                channel_id = item["snippet"]["channelId"]
-                channel_response = self.youtube.channels().list(
-                    part="statistics",
-                    id=channel_id
-                ).execute()
-
-                try:
-                    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
-                    transcript_text = ' '.join([entry['text'] for entry in transcript])
-                except:
-                    try:
-                        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko-KR'])
-                        transcript_text = ' '.join([entry['text'] for entry in transcript])
-                    except:
-                        try:
-                            transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-                            try:
-                                translated = transcript_list.find_transcript(['en']).translate('ko')
-                                transcript_text = ' '.join([entry['text'] for entry in translated.fetch()])
-                            except:
-                                first_transcript = next(iter(transcript_list))
-                                translated = first_transcript.translate('ko')
-                                transcript_text = ' '.join([entry['text'] for entry in translated.fetch()])
-                        except:
-                            transcript_text = "자막을 불러올 수 없습니다."
-
-                title = item["snippet"]["title"]
-                summary = self.generate_summary(transcript_text, title)
-                structured_note = self.generate_structured_note(transcript_text, title)
-                blog_post = self.generate_blog_post(title, transcript_text, summary)
-
                 video_data = {
-                    "title": title,
+                    "title": item["snippet"]["title"],
                     "video_id": video_id,
                     "thumbnail": item["snippet"]["thumbnails"]["high"]["url"],
                     "channel_name": item["snippet"]["channelTitle"],
-                    "channel_subscribers": channel_response["items"][0]["statistics"].get("subscriberCount", "0"),
                     "view_count": video_response["items"][0]["statistics"]["viewCount"],
                     "upload_date": item["snippet"]["publishedAt"],
-                    "transcript": transcript_text,
-                    "summary": summary,
-                    "structured_note": structured_note,
-                    "blog_post": blog_post
+                    "description": item["snippet"]["description"]
                 }
                 videos.append(video_data)
             
             return videos, None
+        except Exception as e:
+            return None, str(e)
+
+    def analyze_video(self, video_id):
+        """단일 영상 상세 분석"""
+        try:
+            video_response = self.youtube.videos().list(
+                part="snippet,statistics",
+                id=video_id
+            ).execute()
+
+            if not video_response['items']:
+                return None, "영상을 찾을 수 없습니다."
+
+            video_data = video_response['items'][0]
+            
+            # 자막 추출
+            try:
+                transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
+                transcript_text = ' '.join([entry['text'] for entry in transcript])
+            except:
+                try:
+                    transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko-KR'])
+                    transcript_text = ' '.join([entry['text'] for entry in transcript])
+                except:
+                    transcript_text = "자막을 불러올 수 없습니다."
+
+            title = video_data['snippet']['title']
+            
+            # 분석 결과 생성
+            analysis_result = {
+                "transcript": transcript_text,
+                "summary": self.generate_summary(transcript_text, title),
+                "blog_post": self.generate_blog_post(title, transcript_text, "")
+            }
+            
+            return analysis_result, None
         except Exception as e:
             return None, str(e)
     def generate_summary(self, text, title):
@@ -279,52 +300,77 @@ def main():
                 st.session_state['gemini_key'] = gemini_key
                 st.success("API 키가 저장되었습니다!")
 
-    elif nav == "🔍 발견":
+   elif nav == "🔍 발견":
         st.title("YouTube 영상 검색 및 분석")
-        tab1, tab2 = st.tabs(["🔍 영상 검색", "🎯 단일 영상 분석"])
         
-        with tab1:
-            st.subheader("키워드로 영상 검색")
-            col1, col2 = st.columns([4, 1])
+        # 검색 필터
+        with st.expander("검색 필터"):
+            col1, col2 = st.columns(2)
             with col1:
-                keyword = st.text_input("검색어를 입력하세요")
+                st.subheader("구분")
+                search_type = st.selectbox("영상 종류", ["전체", "뉴스", "웹사이트"])
             with col2:
-                search_button = st.button("검색", use_container_width=True)
+                st.subheader("업로드 날짜")
+                time_range = st.selectbox(
+                    "기간 선택",
+                    ["전체 날짜", "지난 1시간", "오늘", "이번주", "이번달", "올해"]
+                )
+
+        # 검색창
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            keyword = st.text_input("검색어를 입력하세요")
+        with col2:
+            search_button = st.button("검색", use_container_width=True)
+        
+        if keyword and search_button:
+            search_filters = {
+                "type": search_type if search_type != "전체" else None,
+                "time_range": time_range if time_range != "전체 날짜" else None
+            }
             
-            if keyword and search_button:
-                with st.spinner("검색 중..."):
-                    try:
-                        scraper = YouTubeAnalyzer(youtube_key, gemini_key)
-                        videos, error = scraper.search_videos(keyword, max_results=10)
+            with st.spinner("검색 중..."):
+                try:
+                    analyzer = YouTubeAnalyzer(youtube_key, gemini_key)
+                    videos, error = analyzer.search_videos(keyword, search_filters)
+                    
+                    if error:
+                        st.error(f"오류가 발생했습니다: {error}")
+                    else:
+                        st.success(f"{len(videos)}개의 영상을 찾았습니다!")
                         
-                        if error:
-                            st.error(f"오류가 발생했습니다: {error}")
-                        else:
-                            st.success(f"{len(videos)}개의 영상을 찾았습니다!")
-                            
-                            for video in videos:
-                                with st.container():
-                                    col1, col2, col3 = st.columns([1, 2, 1])
-                                    
-                                    with col1:
-                                        st.image(video.get('thumbnail', ''), use_container_width=True)
-                                    
-                                    with col2:
-                                        st.subheader(video.get('title', '제목 없음'))
-                                        st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
-                                        st.write(f"조회수: {int(video.get('view_count', 0)):,}회")
-                                    
-                                    with col3:
-                                        if st.button("저장", key=f"save_{video['video_id']}"):
-                                            with st.spinner("저장 중..."):
-                                                save_to_knowledge_base(video)
-                                                time.sleep(1)
-                                                st.success("내 지식에 저장되었습니다!")
-                                    
-                                    st.markdown("---")
-                    except Exception as e:
-                        st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
-            
+                        for video in videos:
+                            with st.container():
+                                col1, col2, col3 = st.columns([1, 2, 1])
+                                
+                                with col1:
+                                    st.image(video.get('thumbnail', ''), use_container_width=True)
+                                
+                                with col2:
+                                    st.subheader(video.get('title', '제목 없음'))
+                                    st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                                    st.write(f"조회수: {int(video.get('view_count', 0)):,}회")
+                                    st.write(f"업로드: {video.get('upload_date', '')[:10]}")
+                                
+                                with col3:
+                                    if st.button("분석하기", key=f"analyze_{video['video_id']}"):
+                                        with st.spinner("영상 분석 중..."):
+                                            analysis_result, error = analyzer.analyze_video(video['video_id'])
+                                            if error:
+                                                st.error(error)
+                                            else:
+                                                # 분석 결과 표시
+                                                tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
+                                                with tabs[0]:
+                                                    st.markdown(analysis_result['summary'])
+                                                with tabs[1]:
+                                                    st.markdown(analysis_result['transcript'])
+                                                with tabs[2]:
+                                                    st.markdown(analysis_result['blog_post'])
+                                
+                                st.markdown("---")
+                except Exception as e:
+                    st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
         with tab2:
             st.subheader("YouTube 영상 분석")
             col1, col2 = st.columns([4, 1])
