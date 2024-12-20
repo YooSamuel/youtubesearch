@@ -27,11 +27,15 @@ class YouTubeScraper:
             videos = []
             total_videos = len(search_response["items"])
             
+            # 진행률 표시를 위한 단일 progress bar 생성
+            progress_bar = st.progress(0)
+            progress_text = st.empty()
+                
             for i, item in enumerate(search_response["items"]):
-                # 진행률 표시
-                progress_text = f'동영상 정보 수집 중... ({i+1}/{total_videos})'
-                progress_value = (i + 1) / total_videos
-                st.progress(progress_value, text=progress_text)
+                # 진행률 업데이트
+                current_progress = (i + 1) / total_videos
+                progress_bar.progress(current_progress)
+                progress_text.text(f'동영상 정보 수집 중... ({i+1}/{total_videos})')
                 
                 video_id = item["id"]["videoId"]
                 
@@ -64,6 +68,10 @@ class YouTubeScraper:
                 }
                 videos.append(video_data)
 
+            # 진행 완료 후 progress bar와 text 제거
+            progress_bar.empty()
+            progress_text.empty()
+            
             return videos, None
         except Exception as e:
             return None, str(e)
@@ -155,7 +163,7 @@ def main():
                 col1, col2 = st.columns([1, 2])
                 
                 with col1:
-                    st.image(video['thumbnail'], use_column_width=True)
+                    st.image(video['thumbnail'], use_container_width=True)  # use_column_width를 use_container_width로 변경
                 
                 with col2:
                     st.subheader(video['title'])
