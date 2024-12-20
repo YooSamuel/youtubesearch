@@ -361,7 +361,7 @@ def main():
                     with detail_tabs[2]:
                         st.markdown(video.get('blog_post', '블로그 글을 생성할 수 없습니다.'))
                    
-                   st.markdown("---")
+            st.markdown("---")
 
 if __name__ == "__main__":
    main()
