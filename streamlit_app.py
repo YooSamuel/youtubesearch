@@ -97,27 +97,44 @@ def main():
     st.title("YouTube 영상 정보 수집기 🎥")
     st.markdown("---")
 
+    # API 키를 secrets에서 가져오기
+    if 'api_keys' in st.secrets:
+        default_api_key = st.secrets['api_keys']['youtube']
+    else:
+        default_api_key = ""
+        st.warning("YouTube API 키가 설정되어 있지 않습니다. Streamlit Secrets에서 설정해주세요.")
+
     # 사이드바 설정
     with st.sidebar:
         st.header("검색 설정")
-        api_key = st.text_input("YouTube API 키", type="password", help="YouTube Data API v3 키를 입력하세요")
+        api_key = st.text_input(
+            "YouTube API 키", 
+            value=default_api_key,
+            type="password" if default_api_key else "default",
+            help="YouTube Data API v3 키를 입력하세요"
+        )
         keyword = st.text_input("검색 키워드", help="검색하고 싶은 키워드를 입력하세요")
         max_results = st.slider("검색 결과 수", 1, 50, 5, help="가져올 영상의 수를 선택하세요")
         
         if st.button("검색", use_container_width=True):
-            if not api_key or not keyword:
-                st.error("API 키와 검색어를 모두 입력해주세요.")
+            if not api_key:
+                st.error("API 키를 입력해주세요.")
+            elif not keyword:
+                st.error("검색어를 입력해주세요.")
             else:
                 with st.spinner("검색 중..."):
-                    scraper = YouTubeScraper(api_key)
-                    videos, error = scraper.search_videos(keyword, max_results)
-                    
-                    if error:
-                        st.error(f"오류가 발생했습니다: {error}")
-                    else:
-                        st.session_state.videos = videos
-                        st.session_state.keyword = keyword
-                        st.success("검색이 완료되었습니다!")
+                    try:
+                        scraper = YouTubeScraper(api_key)
+                        videos, error = scraper.search_videos(keyword, max_results)
+                        
+                        if error:
+                            st.error(f"오류가 발생했습니다: {error}")
+                        else:
+                            st.session_state.videos = videos
+                            st.session_state.keyword = keyword
+                            st.success("검색이 완료되었습니다!")
+                    except Exception as e:
+                        st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
 
     # 메인 컨텐츠
     if 'videos' in st.session_state and st.session_state.videos:
