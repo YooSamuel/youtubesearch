@@ -123,24 +123,45 @@ class YouTubeAnalyzer:
             return "노트를 생성할 수 없습니다."
 
     def generate_blog_post(self, title, text, summary):
-        """블로그 포스트 생성"""
+    """블로그 포스트 생성"""
+    try:
+        # 메인 키워드 추출 (제목에서 주요 키워드 추출)
+        keywords = title.split()
+        main_keyword = max(keywords, key=len) if keywords else "주제"
+
         prompt = f"""
-        다음 내용을 블로그 포스트 형식으로 작성해주세요:
+        당신은 네이버 블로그 상위 노출 전문가입니다. 아래 영상의 내용을 기반으로
+        네이버 검색 시 최상단에 노출될 수 있는 블로그 글을 작성해주세요.
+
         제목: {title}
-        요약: {summary}
+        메인 키워드: {main_keyword}
         내용: {text}
-        
-        다음 구조로 작성:
-        1. 흥미로운 제목
-        2. 도입부
-        3. 주요 내용 (2-3개 섹션)
-        4. 결론
+        요약: {summary}
+
+        작성 조건:
+        1. 길이: 한글 기준 2000자 이상
+        2. '{main_keyword}' 키워드를 자연스럽게 7회 이상 사용
+        3. 단락은 200-300자 내외로 구분
+        4. 명확한 소제목 사용 (단, '도입부', '본론', '결론' 등의 형식적 단어 사용 금지)
+        5. 구어체 사용 (예: ~해요, ~네요, ~거든요)
+        6. SEO 최적화를 위한 자연스러운 키워드 배치
+
+        글의 구조:
+        1. 시작: 주제 소개 및 독자의 흥미 유발
+        2. 전개: 3-4개의 소주제로 구분하여 상세 내용 설명
+        3. 마무리: 핵심 내용 요약 및 독자와의 공감대 형성
+
+        추가 요청사항:
+        - 각 문단은 자연스럽게 연결되도록 작성
+        - 읽기 쉽고 이해하기 쉬운 표현 사용
+        - 실용적인 정보와 인사이트 제공
+        - 독자의 공감을 이끌어내는 친근한 톤 유지
         """
-        try:
-            response = self.model.generate_content(prompt)
-            return response.text
-        except:
-            return "블로그 포스트를 생성할 수 없습니다."
+
+        response = self.model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        return f"블로그 포스트 생성 중 오류가 발생했습니다: {str(e)}"
 
 def save_to_knowledge_base(video_data):
     """지식 베이스에 저장"""
