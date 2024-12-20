@@ -18,21 +18,78 @@ class YouTubeScraper:
         genai.configure(api_key=gemini_key)
         self.model = genai.GenerativeModel('gemini-pro')
 
-    def summarize_transcript(self, transcript_text):
-        """Gemini를 사용하여 자막 텍스트 요약"""
+    def summarize_transcript(self, transcript_text, title):
+        """일반적인 내용 요약 생성"""
         if transcript_text == "이 영상에서는 자막을 사용할 수 없습니다.":
             return "자막이 없어 요약을 생성할 수 없습니다."
         
         try:
             prompt = f"""
-            다음 유튜브 영상의 자막을 요약해주세요. 핵심 내용을 3-5개의 간단한 문장으로 정리해주세요.
-            영상 자막:
-            {transcript_text}
+            다음 유튜브 영상의 자막을 간단히 요약해주세요:
+            
+            제목: {title}
+            자막: {transcript_text}
+            
+            요청사항:
+            1. 3-5개의 핵심 포인트로 요약
+            2. 쉽고 명확한 언어 사용
+            3. 중요한 내용 위주로 정리
             """
             response = self.model.generate_content(prompt)
             return response.text
         except Exception as e:
             return f"요약 생성 중 오류가 발생했습니다: {str(e)}"
+
+    def generate_structured_summary(self, transcript_text, title):
+        """구조적/교육적 관점의 요약 생성"""
+        if transcript_text == "이 영상에서는 자막을 사용할 수 없습니다.":
+            return "자막이 없어 요약을 생성할 수 없습니다."
+        
+        try:
+            prompt = f"""
+            다음 유튜브 영상의 내용을 교육적/구조적 관점에서 분석해주세요:
+            
+            제목: {title}
+            내용: {transcript_text}
+            
+            다음 형식으로 작성해주세요:
+            1. 주요 개념 정리
+            2. 핵심 논점 분석
+            3. 단계별 설명 (있는 경우)
+            4. 실제 적용 방안
+            5. 추가 학습 포인트
+            
+            전문적이고 교육적인 톤으로 작성하되, 이해하기 쉽게 설명해주세요.
+            """
+            response = self.model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            return f"구조적 요약 생성 중 오류가 발생했습니다: {str(e)}"
+
+    def generate_blog_post(self, title, transcript_text, summary):
+        """블로그 포스트 생성"""
+        try:
+            prompt = f"""
+            다음 유튜브 영상의 정보를 바탕으로 블로그 포스트를 작성해주세요:
+            
+            제목: {title}
+            요약: {summary}
+            내용: {transcript_text}
+            
+            다음 구조로 작성해주세요:
+            1. 눈에 띄는 제목
+            2. 흥미로운 도입부
+            3. 핵심 내용 설명 (2-3개 섹션)
+            4. 실제 적용 방법이나 시사점
+            5. 결론 및 정리
+            
+            블로그 스타일로 자연스럽고 흥미롭게 작성해주세요.
+            각 섹션은 소제목을 포함하고, 읽기 쉽게 단락을 나눠주세요.
+            """
+            response = self.model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            return f"블로그 포스트 생성 중 오류가 발생했습니다: {str(e)}"
 
     def search_videos(self, keyword, max_results=5):
         try:
@@ -70,7 +127,6 @@ class YouTubeScraper:
                     id=channel_id
                 ).execute()
 
-                # 자막 처리 개선
                 try:
                     # 먼저 한국어 자막 시도
                     transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['ko'])
@@ -98,11 +154,14 @@ class YouTubeScraper:
                         except:
                             transcript_text = "이 영상에서는 자막을 사용할 수 없습니다."
 
-                # 자막 요약 생성
-                summary = self.summarize_transcript(transcript_text)
+                # 요약 및 블로그 포스트 생성
+                title = item["snippet"]["title"]
+                summary = self.summarize_transcript(transcript_text, title)
+                structured_summary = self.generate_structured_summary(transcript_text, title)
+                blog_post = self.generate_blog_post(title, transcript_text, summary)
 
                 video_data = {
-                    "title": item["snippet"]["title"],
+                    "title": title,
                     "video_id": video_id,
                     "thumbnail": item["snippet"]["thumbnails"]["high"]["url"],
                     "channel_name": item["snippet"]["channelTitle"],
@@ -110,7 +169,9 @@ class YouTubeScraper:
                     "view_count": video_response["items"][0]["statistics"]["viewCount"],
                     "upload_date": item["snippet"]["publishedAt"],
                     "transcript": transcript_text,
-                    "summary": summary
+                    "summary": summary,
+                    "structured_summary": structured_summary,
+                    "blog_post": blog_post
                 }
                 videos.append(video_data)
 
@@ -134,9 +195,13 @@ def generate_markdown(videos, keyword):
         content += f"- 구독자 수: {int(video['channel_subscribers']):,}명\n"
         content += f"- 조회수: {int(video['view_count']):,}회\n"
         content += f"- 업로드 날짜: {video['upload_date'][:10]}\n\n"
-        content += "### 영상 내용 요약\n\n"
+        content += "### 영상 요약\n\n"
         content += f"{video['summary']}\n\n"
-        content += "### 영상 자막\n\n"
+        content += "### 구조적 요약\n\n"
+        content += f"{video['structured_summary']}\n\n"
+        content += "### 블로그 포스트\n\n"
+        content += f"{video['blog_post']}\n\n"
+        content += "### 전체 스크립트\n\n"
         content += f"{video['transcript']}\n\n"
         content += "---\n\n"
     
@@ -229,15 +294,4 @@ def main():
                     st.markdown(f"**구독자 수:** {int(video['channel_subscribers']):,}명")
                     st.markdown(f"**조회수:** {int(video['view_count']):,}회")
                     st.markdown(f"**업로드 날짜:** {video['upload_date'][:10]}")
-                    st.markdown(f"**영상 링크:** [YouTube에서 보기](https://www.youtube.com/watch?v={video['video_id']})")
-                
-                with st.expander("내용 요약"):
-                    st.markdown(video['summary'])
-                    
-                with st.expander("전체 자막"):
-                    st.markdown(video['transcript'])
-                
-                st.markdown("---")
-
-if __name__ == "__main__":
-    main()
+                    st.markdown(f"**영상 링크:** [
