@@ -327,39 +327,39 @@ def main():
                                save_to_knowledge_base(analysis_result)
                                st.success("내 지식에 저장되었습니다!")
 
-   elif nav == "📚 내 지식":
-       st.title("저장된 노트")
+    elif nav == "📚 내 지식":
+        st.title("저장된 노트")
        
-       if 'knowledge_base' not in st.session_state:
-           st.session_state.knowledge_base = []
+        if 'knowledge_base' not in st.session_state:
+            st.session_state.knowledge_base = []
        
-       if not st.session_state.knowledge_base:
-           st.write("저장된 노트가 없습니다.")
-       else:
-           for idx, video in enumerate(st.session_state.knowledge_base):
-               with st.container():
-                   col1, col2, col3 = st.columns([1, 2, 1])
-                   with col1:
-                       st.image(video.get('thumbnail', ''), use_container_width=True)
-                   with col2:
-                       st.subheader(video.get('title', '제목 없음'))
-                       st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
-                   with col3:
-                       if st.button("삭제", key=f"delete_{idx}"):
-                           with st.spinner("삭제 중..."):
-                               st.session_state.knowledge_base.pop(idx)
-                               time.sleep(0.5)
-                               st.rerun()
+        if not st.session_state.knowledge_base:
+            st.write("저장된 노트가 없습니다.")
+        else:
+            for idx, video in enumerate(st.session_state.knowledge_base):
+                with st.container():
+                    col1, col2, col3 = st.columns([1, 2, 1])
+                with col1:
+                    st.image(video.get('thumbnail', ''), use_container_width=True)
+                with col2:
+                    st.subheader(video.get('title', '제목 없음'))
+                    st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                with col3:
+                    if st.button("삭제", key=f"delete_{idx}"):
+                        with st.spinner("삭제 중..."):
+                            st.session_state.knowledge_base.pop(idx)
+                            time.sleep(0.5)
+                            st.rerun()
                    
                    # 자세히 보기 확장 패널
-                   with st.expander("자세히 보기"):
-                       detail_tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
-                       with detail_tabs[0]:
-                           st.markdown(video.get('summary', '요약을 생성할 수 없습니다.'))
-                       with detail_tabs[1]:
-                           st.markdown(video.get('transcript', '스크립트를 불러올 수 없습니다.'))
-                       with detail_tabs[2]:
-                           st.markdown(video.get('blog_post', '블로그 글을 생성할 수 없습니다.'))
+                with st.expander("자세히 보기"):
+                    detail_tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
+                    with detail_tabs[0]:
+                        st.markdown(video.get('summary', '요약을 생성할 수 없습니다.'))
+                    with detail_tabs[1]:
+                        st.markdown(video.get('transcript', '스크립트를 불러올 수 없습니다.'))
+                    with detail_tabs[2]:
+                        st.markdown(video.get('blog_post', '블로그 글을 생성할 수 없습니다.'))
                    
                    st.markdown("---")
 
