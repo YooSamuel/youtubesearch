@@ -272,7 +272,7 @@ def main():
         youtube_key = st.session_state.get('youtube_key', '')
         gemini_key = st.session_state.get('gemini_key', '')
 
-    # 메인 컨텐츠
+    # 각 메뉴별 화면
     if nav == "🏠 홈":
         st.title("YouTube 영상 분석 도구")
         st.write("YouTube 영상을 분석하고 학습 자료로 변환하세요!")
@@ -285,7 +285,7 @@ def main():
                 st.session_state['youtube_key'] = youtube_key
                 st.session_state['gemini_key'] = gemini_key
                 st.success("API 키가 저장되었습니다!")
-
+                
     elif nav == "🔍 발견":
         st.title("YouTube 영상 검색")
         
@@ -395,8 +395,51 @@ def main():
                                st.success("내 지식에 저장되었습니다!")
 
     elif nav == "📚 내 지식":
-        display_knowledge_base()
+        st.title("저장된 노트")
+        
+        if 'knowledge_base' not in st.session_state:
+            st.session_state.knowledge_base = []
+        
+        if not st.session_state.knowledge_base:
+            st.write("저장된 노트가 없습니다.")
+        else:
+            st.write(f"총 {len(st.session_state.knowledge_base)}개의 노트가 저장되어 있습니다.")
+            st.markdown("---")
 
+            for idx, video in enumerate(st.session_state.knowledge_base):
+                with st.container():
+                    col1, col2, col3 = st.columns([1, 3, 1])
+                    
+                    with col1:
+                        st.image(video.get('thumbnail', ''), use_container_width=True)
+                    
+                    with col2:
+                        st.subheader(video.get('title', '제목 없음'))
+                        st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                        st.write(f"저장 시간: {video.get('saved_at', '알 수 없음')}")
+                    
+                    with col3:
+                        st.write("")
+                        st.write("")
+                        if st.button("🗑️ 삭제", key=f"delete_{idx}"):
+                            st.session_state.knowledge_base.pop(idx)
+                            st.success("노트가 삭제되었습니다.")
+                            time.sleep(0.5)
+                            st.rerun()
+                    
+                    with st.expander("자세히 보기"):
+                        tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
+                        
+                        with tabs[0]:
+                            st.markdown(video.get('summary', '요약이 없습니다.'))
+                        
+                        with tabs[1]:
+                            st.markdown(video.get('transcript', '스크립트가 없습니다.'))
+                        
+                        with tabs[2]:
+                            st.markdown(video.get('blog_post', '블로그 포스트가 없습니다.'))
+                    
+                    st.markdown("---")
 
 if __name__ == "__main__":
-   main()
+    main()
