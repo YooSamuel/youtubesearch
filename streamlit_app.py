@@ -258,119 +258,119 @@ def main():
                 st.session_state['gemini_key'] = gemini_key
                 st.success("API 키가 저장되었습니다!")
 
-       elif nav == "🔍 발견":
-       st.title("YouTube 영상 검색")
-       
-       # 검색 필터
-       with st.expander("검색 필터"):
-           col1, col2 = st.columns(2)
-           with col1:
-               st.subheader("구분")
-               search_type = st.selectbox("영상 종류", ["전체", "뉴스", "웹사이트"])
-           with col2:
-               st.subheader("업로드 날짜")
-               time_range = st.selectbox(
-                   "기간 선택",
-                   ["전체 날짜", "지난 1시간", "오늘", "이번주", "이번달", "올해"]
-               )
+    elif nav == "🔍 발견":
+        st.title("YouTube 영상 검색")
+    
+    # 검색 필터
+    with st.expander("검색 필터"):
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("구분")
+            search_type = st.selectbox("영상 종류", ["전체", "뉴스", "웹사이트"])
+        with col2:
+            st.subheader("업로드 날짜")
+            time_range = st.selectbox(
+                "기간 선택",
+                ["전체 날짜", "지난 1시간", "오늘", "이번주", "이번달", "올해"]
+            )
 
-       # 검색창
-       col1, col2 = st.columns([4, 1])
-       with col1:
-           keyword = st.text_input("검색어를 입력하세요")
-       with col2:
-           search_button = st.button("검색", use_container_width=True)
-       
-       if keyword and search_button:
-           search_filters = {
-               "type": search_type if search_type != "전체" else None,
-               "time_range": time_range if time_range != "전체 날짜" else None
-           }
-           
-           with st.spinner("검색 중..."):
-               try:
-                   analyzer = YouTubeAnalyzer(youtube_key, gemini_key)
-                   videos, error = analyzer.search_videos(keyword, search_filters)
-                   
-                   if error:
-                       st.error(f"오류가 발생했습니다: {error}")
-                   else:
-                       st.success(f"{len(videos)}개의 영상을 찾았습니다!")
-                       
-                       for video in videos:
-                           with st.container():
-                               col1, col2, col3 = st.columns([1, 2, 1])
-                               
-                               with col1:
-                                   st.image(video.get('thumbnail', ''), use_container_width=True)
-                               
-                               with col2:
-                                   st.subheader(video.get('title', '제목 없음'))
-                                   st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
-                                   st.write(f"조회수: {int(video.get('view_count', 0)):,}회")
-                                   st.write(f"업로드: {video.get('upload_date', '')[:10]}")
-                               
-                               with col3:
-                                   video_url = f"https://youtube.com/watch?v={video['video_id']}"
-                                   if st.button("분석하기", key=f"analyze_{video['video_id']}"):
-                                       st.session_state['analysis_url'] = video_url
-                                       st.session_state['current_tab'] = "📊 분석"
-                                       st.rerun()
-                               
-                               st.markdown("---")
-               except Exception as e:
-                   st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
+    # 검색창
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        keyword = st.text_input("검색어를 입력하세요")
+    with col2:
+        search_button = st.button("검색", use_container_width=True)
+    
+    if keyword and search_button:
+        search_filters = {
+            "type": search_type if search_type != "전체" else None,
+            "time_range": time_range if time_range != "전체 날짜" else None
+        }
+        
+        with st.spinner("검색 중..."):
+            try:
+                analyzer = YouTubeAnalyzer(youtube_key, gemini_key)
+                videos, error = analyzer.search_videos(keyword, search_filters)
+                
+                if error:
+                    st.error(f"오류가 발생했습니다: {error}")
+                else:
+                    st.success(f"{len(videos)}개의 영상을 찾았습니다!")
+                    
+                    for video in videos:
+                        with st.container():
+                            col1, col2, col3 = st.columns([1, 2, 1])
+                            
+                            with col1:
+                                st.image(video.get('thumbnail', ''), use_container_width=True)
+                            
+                            with col2:
+                                st.subheader(video.get('title', '제목 없음'))
+                                st.write(f"채널: {video.get('channel_name', '채널명 없음')}")
+                                st.write(f"조회수: {int(video.get('view_count', 0)):,}회")
+                                st.write(f"업로드: {video.get('upload_date', '')[:10]}")
+                            
+                            with col3:
+                                video_url = f"https://youtube.com/watch?v={video['video_id']}"
+                                if st.button("분석하기", key=f"analyze_{video['video_id']}"):
+                                    st.session_state['analysis_url'] = video_url
+                                    st.session_state['current_tab'] = "📊 분석"
+                                    st.rerun()
+                            
+                            st.markdown("---")
+            except Exception as e:
+                st.error(f"예기치 않은 오류가 발생했습니다: {str(e)}")
 
     elif nav == "📊 분석":
-       st.title("YouTube 영상 분석")
-       
-       # URL 입력
-       video_url = st.text_input(
-           "YouTube 영상 URL을 입력하세요",
-           value=st.session_state.get('analysis_url', '')
-       )
-       
-       analyze_button = st.button("분석", use_container_width=True)
-       
-       if video_url and analyze_button:
-           with st.spinner("영상 분석 중..."):
-               analyzer = YouTubeAnalyzer(youtube_key, gemini_key)
-               video_id = analyzer.get_video_id(video_url)
-               
-               if not video_id:
-                   st.error("올바른 YouTube URL을 입력해주세요.")
-               else:
-                   analysis_result, error = analyzer.analyze_video(video_id)
-                   if error:
-                       st.error(error)
-                   else:
-                       col1, col2 = st.columns([1, 3])
-                       with col1:
-                           st.image(analysis_result['thumbnail'], use_container_width=True)
-                       with col2:
-                           st.subheader(analysis_result['title'])
-                           st.write(f"채널: {analysis_result['channel_name']}")
+        st.title("YouTube 영상 분석")
+        
+        # URL 입력
+        video_url = st.text_input(
+            "YouTube 영상 URL을 입력하세요",
+            value=st.session_state.get('analysis_url', '')
+        )
+        
+        analyze_button = st.button("분석", use_container_width=True)
+        
+        if video_url and analyze_button:
+            with st.spinner("영상 분석 중..."):
+                analyzer = YouTubeAnalyzer(youtube_key, gemini_key)
+                video_id = analyzer.get_video_id(video_url)
+                
+                if not video_id:
+                    st.error("올바른 YouTube URL을 입력해주세요.")
+                else:
+                    analysis_result, error = analyzer.analyze_video(video_id)
+                    if error:
+                        st.error(error)
+                    else:
+                        col1, col2 = st.columns([1, 3])
+                        with col1:
+                            st.image(analysis_result['thumbnail'], use_container_width=True)
+                        with col2:
+                            st.subheader(analysis_result['title'])
+                            st.write(f"채널: {analysis_result['channel_name']}")
 
-                       # 분석 결과 탭으로 표시
-                       tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
-                       with tabs[0]:
-                           st.markdown(analysis_result['summary'])
-                       with tabs[1]:
-                           st.markdown(analysis_result['transcript'])
-                       with tabs[2]:
-                           st.markdown(analysis_result['blog_post'])
-                       
-                       # 저장 버튼
-                       if st.button("내 지식에 저장", key="save_analysis"):
-                           with st.spinner("저장 중..."):
-                               if save_to_knowledge_base(analysis_result):
-                                   st.success("성공적으로 저장되었습니다!")
-                                   # 저장된 데이터 확인
-                                   st.write("현재 저장된 모든 노트:")
-                                   for idx, note in enumerate(st.session_state['knowledge_base']):
-                                       st.write(f"{idx + 1}. {note.get('title')} (저장시간: {note.get('saved_at')})")
-                               else:
-                                   st.error("저장에 실패했습니다.")
+                        # 분석 결과 탭으로 표시
+                        tabs = st.tabs(["📝 요약", "📜 스크립트", "📚 블로그"])
+                        with tabs[0]:
+                            st.markdown(analysis_result['summary'])
+                        with tabs[1]:
+                            st.markdown(analysis_result['transcript'])
+                        with tabs[2]:
+                            st.markdown(analysis_result['blog_post'])
+                        
+                        # 저장 버튼
+                        if st.button("내 지식에 저장", key="save_analysis"):
+                            with st.spinner("저장 중..."):
+                                if save_to_knowledge_base(analysis_result):
+                                    st.success("성공적으로 저장되었습니다!")
+                                    # 저장된 데이터 확인
+                                    st.write("현재 저장된 모든 노트:")
+                                    for idx, note in enumerate(st.session_state['knowledge_base']):
+                                        st.write(f"{idx + 1}. {note.get('title')} (저장시간: {note.get('saved_at')})")
+                                else:
+                                    st.error("저장에 실패했습니다.")
 
     elif nav == "📚 내 지식":
         st.title("저장된 노트")
